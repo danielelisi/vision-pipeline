@@ -14,12 +14,13 @@ import RealityKit
 /// Walls: u runs once around the perimeter (near, right, far, left), v = height / `wallSpan`.
 @MainActor
 enum DioramaMesh {
+    // Constants are nonisolated: the texture baker reads them off the main thread.
     /// Height of the unscaled base under the terrain, in metres. Holds the soil band.
-    static let baseDepth: Float = 0.04
+    nonisolated static let baseDepth: Float = 0.04
     /// Wall height that the wall texture covers top to bottom, at exaggeration 1.
-    static let wallSpan: Float = baseDepth + Terrain.heightScale
+    nonisolated static let wallSpan: Float = baseDepth + Terrain.heightScale
     /// Ripple texture repeats every this many metres on the water.
-    static let rippleTile: Float = 0.08
+    nonisolated static let rippleTile: Float = 0.08
 
     private struct Builder {
         var positions: [SIMD3<Float>] = []
@@ -44,6 +45,7 @@ enum DioramaMesh {
             indices.append(contentsOf: [a, b, d, a, d, c])
         }
 
+        @MainActor
         func mesh(named name: String) throws -> MeshResource {
             var descriptor = MeshDescriptor(name: name)
             descriptor.positions = MeshBuffer(positions)
