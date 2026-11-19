@@ -1,11 +1,5 @@
 import SwiftUI
 
-@Observable
-final class AppModel {
-    static let clusterWindowID = "cluster"
-    var isClusterOpen = false
-}
-
 @main
 struct VisionPipelineApp: App {
     @State private var model = AppModel()
