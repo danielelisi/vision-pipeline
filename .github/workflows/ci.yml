@@ -26,14 +26,8 @@ jobs:
         with:
           xcode-version: latest-stable
 
-      - name: Tools and visionOS platform
-        run: |
-          brew install xcodegen xcbeautify
-          xcodebuild -version
-          xcodebuild -showsdks | grep -q xros || xcodebuild -downloadPlatform visionOS
-
-      - name: Generate Xcode project
-        run: xcodegen generate
+      - name: Tools, simulator SDK, and Xcode project
+        run: bash ci/setup.sh xrsimulator
 
       - name: Build
         run: |
@@ -43,6 +37,8 @@ jobs:
             -scheme "$APP" \
             -destination 'generic/platform=visionOS Simulator' \
             -derivedDataPath build \
+            -showBuildTimingSummary \
+            ARCHS=arm64 \
             CODE_SIGNING_ALLOWED=NO \
             | xcbeautify --renderer github-actions
 
@@ -71,11 +67,8 @@ jobs:
         with:
           xcode-version: latest-stable
 
-      - name: Tools and visionOS platform
-        run: |
-          brew install xcodegen xcbeautify
-          xcodebuild -showsdks | grep -q xros || xcodebuild -downloadPlatform visionOS
-          xcodegen generate
+      - name: Tools, device SDK, and Xcode project
+        run: bash ci/setup.sh xros
 
       - name: Write App Store Connect API key
         run: |
@@ -90,6 +83,7 @@ jobs:
             -scheme "$APP" \
             -destination 'generic/platform=visionOS' \
             -archivePath build/App.xcarchive \
+            -showBuildTimingSummary \
             -allowProvisioningUpdates \
             -authenticationKeyPath ~/.appstoreconnect/AuthKey.p8 \
             -authenticationKeyID "$ASC_KEY_ID" \

@@ -7,8 +7,16 @@ applying it to real projects.
 
 | Trigger | Job | What happens |
 |---|---|---|
-| push / PR / manual | **Build** | `macos-15` runner → latest Xcode → `xcodegen generate` → build for the visionOS simulator (unsigned) → `.app` uploaded as an artifact |
+| push / PR / manual | **Build** | `macos-15` runner → latest Xcode → `xcodegen generate` → build for the ARM64 visionOS simulator (unsigned) → `.app` uploaded as an artifact |
 | tag `v*` | **Ship to TestFlight** | archive with cloud-managed signing via an App Store Connect API key → upload to TestFlight |
+
+CI installs only missing tools and disables Homebrew auto-update/cleanup on the
+disposable runner. Both build jobs print Xcode timing summaries. The simulator
+artifact targets Apple silicon; it does not include an Intel simulator binary.
+The TestFlight job still waits for the simulator build to pass.
+
+See [the CI performance review](ci/performance.md) for baseline measurements and
+further options.
 
 ## Local
 
