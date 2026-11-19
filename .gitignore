@@ -3,3 +3,4 @@ build/
 DerivedData/
 VisionPipeline/Info.plist
 .DS_Store
+.worktrees/
