@@ -20,6 +20,9 @@ targets:
       path: VisionPipeline/Info.plist
       properties:
         CFBundleDisplayName: Vision Pipeline
+        # Use build settings so CI can set them (XcodeGen otherwise hardcodes 1.0 / 1).
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: true
           UIApplicationPreferredDefaultSceneSessionRole: UIWindowSceneSessionRoleApplication
