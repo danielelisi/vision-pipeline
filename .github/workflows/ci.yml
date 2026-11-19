@@ -63,6 +63,18 @@ jobs:
             | tee "$RUNNER_TEMP/simulator-build.log" \
             | xcbeautify --renderer github-actions
 
+      - name: Summarize build timings and compiler cache hits
+        if: always()
+        run: |
+          if [[ -f "$RUNNER_TEMP/simulator-build.log" ]]; then
+            {
+              echo '### Xcode build metrics'
+              echo '```text'
+              awk '/^CompilationCacheMetrics$/{getline; print} /^Build Timing Summary$/{timings=1} timings' "$RUNNER_TEMP/simulator-build.log"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Upload simulator build log
         if: always()
         uses: actions/upload-artifact@v7
@@ -100,27 +112,17 @@ jobs:
       - name: Tools, device SDK, and Xcode project
         run: bash ci/setup.sh xros
 
-      - name: Device compilation cache
-        id: compilation-cache
-        uses: ./.github/actions/compilation-cache
-        with:
-          sdk: xros
-          configuration: Release
-
       - name: Write App Store Connect API key
         run: |
           mkdir -p ~/.appstoreconnect
           echo "${{ secrets.ASC_KEY_P8_BASE64 }}" | base64 --decode > ~/.appstoreconnect/AuthKey.p8
 
       - name: Archive (cloud-managed signing)
-        env:
-          COMPILATION_CACHE_PATH: ${{ steps.compilation-cache.outputs.path }}
         run: |
           set -o pipefail
           xcodebuild archive \
             -project "$APP.xcodeproj" \
             -scheme "$APP" \
-            -configuration Release \
             -destination 'generic/platform=visionOS' \
             -archivePath build/App.xcarchive \
             -showBuildTimingSummary \
@@ -128,14 +130,10 @@ jobs:
             -authenticationKeyPath ~/.appstoreconnect/AuthKey.p8 \
             -authenticationKeyID "$ASC_KEY_ID" \
             -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
-            COMPILATION_CACHE_ENABLE_CACHING=YES \
-            COMPILATION_CACHE_CAS_PATH="$COMPILATION_CACHE_PATH" \
-            COMPILATION_CACHE_ENABLE_DIAGNOSTIC_REMARKS=YES \
             DEVELOPMENT_TEAM="$TEAM_ID" \
             CODE_SIGN_STYLE=Automatic \
             MARKETING_VERSION="${GITHUB_REF_NAME#v}" \
             CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
-            | tee "$RUNNER_TEMP/archive-build.log" \
             | xcbeautify --renderer github-actions
 
       - name: Export and upload to TestFlight
