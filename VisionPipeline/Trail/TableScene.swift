@@ -1,6 +1,11 @@
 import RealityKit
 import UIKit
 
+/// Marks the terrain as the target of the tap and two-hand Shape gestures.
+struct TerrainTargetComponent: Component {}
+/// Marks waypoint pins as the target of the drag and long-press gestures.
+struct PinTargetComponent: Component {}
+
 /// Owns the RealityKit entities for the trail table and keeps them in step with `TrailModel`.
 ///
 /// The map is a square diorama block cut out of the landscape (no plinth). Hierarchy:
@@ -59,6 +64,7 @@ final class TableScene {
 
         terrain.name = "terrain"
         terrain.position = [0, DioramaMesh.baseDepth, 0]
+        terrain.components.set(TerrainTargetComponent())
         table.addChild(pivot)
         pivot.addChild(terrain)
         terrain.addChild(visual)
@@ -182,7 +188,6 @@ final class TableScene {
         pivot.orientation = simd_quatf(angle: heading, axis: [0, 1, 0])
         visual.scale = [1, exaggeration, 1]
         wantedExaggeration = exaggeration
-        refreshCollision()
 
         if placedEffects != exaggeration {
             WaterfallEffect.place(fall: fall, splash: splash, mist: mist,
@@ -191,9 +196,12 @@ final class TableScene {
         }
 
         if mode != appliedMode {
-            apply(mode)
             appliedMode = mode
+            apply(mode)
         }
+        // The exact surface is only needed for placing waypoints. Rebuilding it while a Shape
+        // gesture runs would swap the collision under the hands and cancel the gesture.
+        if mode == .plan { refreshCollision() }
 
         syncPins(waypoints, terrain: model.terrain, exaggeration: exaggeration, mode: mode)
         syncRoute(route, terrain: model.terrain, exaggeration: exaggeration)
@@ -271,6 +279,16 @@ final class TableScene {
             setInput(pin, enabled: mode == .plan)
         }
 
+        if mode == .shape {
+            // A steady box around the whole block: easy to aim both hands at, and it never
+            // changes mid-gesture. The exact surface comes back when returning to Plan.
+            let block = ShapeResource
+                .generateBox(size: [Terrain.size, 0.72, Terrain.size])
+                .offsetBy(translation: [0, 0.36, 0])
+            terrain.components.set(CollisionComponent(shapes: [block]))
+            collisionExaggeration = nil
+        }
+
         // ManipulationComponent is visionOS 26 only. On older systems Move mode does nothing.
         if #available(visionOS 26.0, *) {
             if mode == .move {
@@ -312,8 +330,13 @@ final class TableScene {
                 shape = try? await ShapeResource.generateStaticMesh(from: mesh)
             }
             guard let self else { return }
-            if let shape {
+            // Only Plan uses the exact surface; if the mode changed meanwhile, keep its collision.
+            if let shape, self.appliedMode == .plan {
                 self.terrain.components.set(CollisionComponent(shapes: [shape]))
+            } else if self.appliedMode != .plan {
+                self.collisionExaggeration = nil
+                self.collisionTask = nil
+                return
             }
             self.collisionExaggeration = target   // also on failure, so it does not retry in a loop
             self.collisionTask = nil
@@ -326,6 +349,7 @@ final class TableScene {
     private func makePin(id: UUID) -> ModelEntity {
         let pin = ModelEntity(mesh: pinMesh, materials: [])
         pin.name = "wp:\(id.uuidString)"   // gestures resolve the waypoint from this name
+        pin.components.set(PinTargetComponent())
         pin.components.set(CollisionComponent(shapes: [.generateSphere(radius: 0.022)]))
         pin.components.set(HoverEffectComponent())
 

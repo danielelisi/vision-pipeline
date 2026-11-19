@@ -19,6 +19,14 @@ final class TrailModel {
             }
         }
 
+        var systemImage: String {
+            switch self {
+            case .plan: "mappin.and.ellipse"
+            case .move: "hand.raised"
+            case .shape: "mountain.2"
+            }
+        }
+
         /// What to try in each mode.
         var hints: [String] {
             switch self {
@@ -33,7 +41,7 @@ final class TrailModel {
                 "Pass it from one hand to the other.",
             ]
             case .shape: [
-                "Pinch with both hands and pull apart to exaggerate the mountains.",
+                "Look at the block, pinch with both hands and pull apart to exaggerate the mountains.",
                 "Pinch with both hands and turn them like a wheel to spin the map.",
             ]
             }

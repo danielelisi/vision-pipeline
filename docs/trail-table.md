@@ -15,6 +15,7 @@ with a waterfall into a pool — where you plan a hiking route with your hands. 
 
 | Mode | Do this | What happens | API |
 |---|---|---|---|
+| Any | Turn your left palm up, pinch a button | Switches mode (Plan, Shape, Move) | ARKit hand tracking (`PalmMenu`) |
 | Plan | Look at the terrain and pinch | Drops a waypoint | `SpatialTapGesture` |
 | Plan | Pinch a waypoint and drag | Moves it, and the route re-drapes over the ground | `DragGesture` |
 | Plan | Pinch a waypoint and hold still for 1 s | Deletes it | `LongPressGesture` |
@@ -44,4 +45,5 @@ a soil band at the bottom, and a translucent pool you can see through the side.
 | `TrailModel.swift` | Waypoints, mode, route sampling, stats (Naismith time estimate) |
 | `TableScene.swift` | Entities, light, pins, route line, collision, Move-mode manipulation |
 | `TableView.swift` | The immersive `RealityView` and all SwiftUI gestures |
+| `PalmMenu.swift` | Palm-up mode menu from ARKit hand tracking |
 | `TrailPanel.swift` | Mode picker, stats and elevation chart |

@@ -25,6 +25,7 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         # No non-exempt encryption: skips TestFlight's export compliance prompt.
         ITSAppUsesNonExemptEncryption: false
+        NSHandsTrackingUsageDescription: Turn your left palm up to show the Trail Table mode menu.
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: true
           UIApplicationPreferredDefaultSceneSessionRole: UIWindowSceneSessionRoleApplication
