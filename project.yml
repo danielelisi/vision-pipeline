@@ -1,0 +1,24 @@
+# Minimal visionOS app for getting CI right. Generate with: xcodegen generate
+name: VisionPipeline
+options:
+  bundleIdPrefix: dev.daniele
+  deploymentTarget:
+    visionOS: "2.0"
+targets:
+  VisionPipeline:
+    type: application
+    platform: visionOS
+    sources: [VisionPipeline]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.daniele.visionpipeline
+        SWIFT_VERSION: "5.0"
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+    info:
+      path: VisionPipeline/Info.plist
+      properties:
+        CFBundleDisplayName: Vision Pipeline
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+          UIApplicationPreferredDefaultSceneSessionRole: UIWindowSceneSessionRoleApplication
