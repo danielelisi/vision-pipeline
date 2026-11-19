@@ -6,6 +6,11 @@ on:
     tags: ["v*"]          # push a v0.1.0-style tag to ship to TestFlight
   pull_request:
   workflow_dispatch:
+    inputs:
+      use_cache:
+        description: Restore and save compilation results (disable for a baseline run)
+        type: boolean
+        default: true
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -29,18 +34,43 @@ jobs:
       - name: Tools, simulator SDK, and Xcode project
         run: bash ci/setup.sh xrsimulator
 
+      - name: Simulator compilation cache
+        id: compilation-cache
+        uses: ./.github/actions/compilation-cache
+        with:
+          sdk: xrsimulator
+          configuration: Debug
+          enabled: ${{ github.event_name != 'workflow_dispatch' || inputs.use_cache }}
+
       - name: Build
+        env:
+          COMPILATION_CACHE_PATH: ${{ steps.compilation-cache.outputs.path }}
+          COMPILATION_CACHE_ENABLED: ${{ steps.compilation-cache.outputs.enabled }}
         run: |
           set -o pipefail
           xcodebuild build \
             -project "$APP.xcodeproj" \
             -scheme "$APP" \
+            -configuration Debug \
             -destination 'generic/platform=visionOS Simulator' \
             -derivedDataPath build \
             -showBuildTimingSummary \
             ARCHS=arm64 \
+            COMPILATION_CACHE_ENABLE_CACHING="$COMPILATION_CACHE_ENABLED" \
+            COMPILATION_CACHE_CAS_PATH="$COMPILATION_CACHE_PATH" \
+            COMPILATION_CACHE_ENABLE_DIAGNOSTIC_REMARKS=YES \
             CODE_SIGNING_ALLOWED=NO \
+            | tee "$RUNNER_TEMP/simulator-build.log" \
             | xcbeautify --renderer github-actions
+
+      - name: Upload simulator build log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: simulator-build-log
+          path: ${{ runner.temp }}/simulator-build.log
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Upload simulator build
         uses: actions/upload-artifact@v7
@@ -70,17 +100,27 @@ jobs:
       - name: Tools, device SDK, and Xcode project
         run: bash ci/setup.sh xros
 
+      - name: Device compilation cache
+        id: compilation-cache
+        uses: ./.github/actions/compilation-cache
+        with:
+          sdk: xros
+          configuration: Release
+
       - name: Write App Store Connect API key
         run: |
           mkdir -p ~/.appstoreconnect
           echo "${{ secrets.ASC_KEY_P8_BASE64 }}" | base64 --decode > ~/.appstoreconnect/AuthKey.p8
 
       - name: Archive (cloud-managed signing)
+        env:
+          COMPILATION_CACHE_PATH: ${{ steps.compilation-cache.outputs.path }}
         run: |
           set -o pipefail
           xcodebuild archive \
             -project "$APP.xcodeproj" \
             -scheme "$APP" \
+            -configuration Release \
             -destination 'generic/platform=visionOS' \
             -archivePath build/App.xcarchive \
             -showBuildTimingSummary \
@@ -88,10 +128,14 @@ jobs:
             -authenticationKeyPath ~/.appstoreconnect/AuthKey.p8 \
             -authenticationKeyID "$ASC_KEY_ID" \
             -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            COMPILATION_CACHE_ENABLE_CACHING=YES \
+            COMPILATION_CACHE_CAS_PATH="$COMPILATION_CACHE_PATH" \
+            COMPILATION_CACHE_ENABLE_DIAGNOSTIC_REMARKS=YES \
             DEVELOPMENT_TEAM="$TEAM_ID" \
             CODE_SIGN_STYLE=Automatic \
             MARKETING_VERSION="${GITHUB_REF_NAME#v}" \
             CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            | tee "$RUNNER_TEMP/archive-build.log" \
             | xcbeautify --renderer github-actions
 
       - name: Export and upload to TestFlight

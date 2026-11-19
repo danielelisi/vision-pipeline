@@ -1,0 +1,71 @@
+name: Xcode compilation cache
+description: Restore compiler results for a compatible Xcode toolchain and SDK.
+inputs:
+  sdk:
+    description: SDK name (xros or xrsimulator).
+    required: true
+  configuration:
+    description: Xcode build configuration.
+    required: true
+  enabled:
+    description: Set to false for an uncached benchmark.
+    default: 'true'
+outputs:
+  path:
+    description: Absolute path passed to COMPILATION_CACHE_CAS_PATH.
+    value: ${{ steps.identity.outputs.path }}
+  enabled:
+    description: YES or NO for COMPILATION_CACHE_ENABLE_CACHING.
+    value: ${{ steps.identity.outputs.enabled }}
+runs:
+  using: composite
+  steps:
+    - name: Identify compiler cache
+      id: identity
+      shell: bash
+      env:
+        CACHE_SDK: ${{ inputs.sdk }}
+        CACHE_CONFIGURATION: ${{ inputs.configuration }}
+        CACHE_ENABLED: ${{ inputs.enabled }}
+        PROJECT_HASH: ${{ hashFiles('project.yml', '.github/actions/compilation-cache/action.yml') }}
+      run: |
+        set -euo pipefail
+        xcode_version=$(xcodebuild -version)
+        sdk_build=$(xcrun --sdk "$CACHE_SDK" --show-sdk-build-version)
+        os_build=$(sw_vers -buildVersion)
+        fingerprint=$(
+          printf '%s\n' "$xcode_version" "$sdk_build" "$os_build" \
+            "$RUNNER_ARCH" "$GITHUB_WORKSPACE" "$CACHE_SDK" "$CACHE_CONFIGURATION" "$PROJECT_HASH" \
+            | shasum -a 256 | cut -d ' ' -f 1
+        )
+        echo "prefix=xcode-cas-v1-$RUNNER_OS-$RUNNER_ARCH-$CACHE_SDK-$CACHE_CONFIGURATION-$fingerprint" >> "$GITHUB_OUTPUT"
+        echo "path=$GITHUB_WORKSPACE/.ci-cache/$CACHE_SDK-$CACHE_CONFIGURATION" >> "$GITHUB_OUTPUT"
+        if [[ "$CACHE_ENABLED" == true ]]; then
+          echo 'enabled=YES' >> "$GITHUB_OUTPUT"
+        else
+          echo 'enabled=NO' >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Restore and save compiler results
+      id: cache
+      if: inputs.enabled == 'true'
+      uses: actions/cache@v5
+      with:
+        path: ${{ steps.identity.outputs.path }}
+        key: ${{ steps.identity.outputs.prefix }}-${{ github.sha }}
+        restore-keys: |
+          ${{ steps.identity.outputs.prefix }}-
+
+    - name: Report compiler cache
+      shell: bash
+      env:
+        CACHE_ENABLED: ${{ inputs.enabled }}
+        CACHE_HIT: ${{ steps.cache.outputs.cache-hit }}
+        CACHE_SDK: ${{ inputs.sdk }}
+        CACHE_CONFIGURATION: ${{ inputs.configuration }}
+      run: |
+        {
+          echo "### Compilation cache ($CACHE_SDK, $CACHE_CONFIGURATION)"
+          echo "Enabled: $CACHE_ENABLED; exact snapshot hit: ${CACHE_HIT:-false}."
+          echo 'A fallback snapshot can also contain reusable results; compiler remarks in the raw build log confirm reuse.'
+        } >> "$GITHUB_STEP_SUMMARY"
