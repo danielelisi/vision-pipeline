@@ -194,10 +194,13 @@ struct Terrain {
             lipUV = p
         }
         let lipHeight = bilinear(ground, n, u: lipUV.x, v: lipUV.y)
+        // The notch sits at the pool's rounded inner corner, so fall diagonally into the pool:
+        // that clears the cliff soonest and lands well inside the water.
+        let into = simd_normalize(SIMD2<Float>(1, 1)) * 0.03
         return Waterfall(
             lip: tablePosition(u: lipUV.x, v: lipUV.y),
             lipHeight: lipHeight,
-            impact: tablePosition(u: lipUV.x, v: lipUV.y + 0.03)
+            impact: tablePosition(u: lipUV.x + into.x, v: lipUV.y + into.y)
         )
     }
 
