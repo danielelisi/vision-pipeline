@@ -13,7 +13,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.daniele.visionpipeline
         SWIFT_VERSION: "5.0"
-        MARKETING_VERSION: "0.1.0"
+        MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     info:
@@ -23,6 +23,8 @@ targets:
         # Use build settings so CI can set them (XcodeGen otherwise hardcodes 1.0 / 1).
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # No non-exempt encryption: skips TestFlight's export compliance prompt.
+        ITSAppUsesNonExemptEncryption: false
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: true
           UIApplicationPreferredDefaultSceneSessionRole: UIWindowSceneSessionRoleApplication

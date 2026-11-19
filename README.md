@@ -28,4 +28,4 @@ Requires an Apple silicon Mac.
    - `ASC_KEY_ID`, `ASC_ISSUER_ID`
    - `ASC_KEY_P8_BASE64`: `base64 -i AuthKey_XXXX.p8 | pbcopy`
    - `APPLE_TEAM_ID`
-5. `git tag v0.1.0 && git push --tags`
+5. `git tag v1.0.1 && git push --tags` (versions must be > 1.0.0)
