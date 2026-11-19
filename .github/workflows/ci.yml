@@ -20,7 +20,7 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: maxim-lobanov/setup-xcode@v1
         with:
@@ -47,7 +47,7 @@ jobs:
             | xcbeautify --renderer github-actions
 
       - name: Upload simulator build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: VisionPipeline-simulator
           path: build/Build/Products/Debug-xrsimulator/*.app
@@ -65,7 +65,7 @@ jobs:
       ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
       TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: maxim-lobanov/setup-xcode@v1
         with:
