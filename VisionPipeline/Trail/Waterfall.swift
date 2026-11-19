@@ -139,5 +139,7 @@ enum TrailEffects {
     static func register() {
         WaterRippleComponent.registerComponent()
         WaterRippleSystem.registerSystem()
+        TerrainTargetComponent.registerComponent()
+        PinTargetComponent.registerComponent()
     }
 }

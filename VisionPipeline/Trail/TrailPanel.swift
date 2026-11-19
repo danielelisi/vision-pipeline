@@ -18,6 +18,11 @@ struct TrailPanel: View {
                     Toggle("Show the trail table", isOn: $showingTable)
                 }
 
+                Section {
+                    Label("In the space, turn your left palm up to switch mode.", systemImage: "hand.raised")
+                        .font(.callout)
+                }
+
                 Section("Gesture mode") {
                     Picker("Mode", selection: $model.mode) {
                         ForEach(TrailModel.Mode.allCases) { mode in
