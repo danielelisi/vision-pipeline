@@ -116,3 +116,35 @@ gh workflow run ci.yml --ref ci/compilation-cache -f use_cache=true
 References: [Xcode 26 compilation caching](https://developer.apple.com/documentation/Xcode-Release-Notes/xcode-26-release-notes),
 [cache action](https://github.com/actions/cache), and
 [GitHub cache scope restrictions](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#restrictions-for-accessing-a-cache).
+
+### Measured results (2026-11-19)
+
+All five runs below used commit `f6055a3`, the same app source, Xcode 26.3,
+and the `macos-15-arm64` image. Uncached controls explicitly set
+`COMPILATION_CACHE_ENABLE_CACHING=NO` and skip cache transfer. Runs were
+interleaved; the controls used a temporary ref at the same commit so GitHub's
+concurrency rule would not cancel the warm runs.
+
+| Mode | Run | Build step | Entire job | Compiler replay hits | Asset compilation task |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Cold/populate | [44500229760](https://github.com/danielelisi/vision-pipeline/actions/runs/44500229760) | 153 s | 177 s | 0/80 | 140.843 s |
+| Uncached 1 | [44500708510](https://github.com/danielelisi/vision-pipeline/actions/runs/44500708510) | 82 s | 106 s | disabled | 69.763 s |
+| Warm 1 | [44500736053](https://github.com/danielelisi/vision-pipeline/actions/runs/44500736053) | 97 s | 125 s | 80/80 | 81.183 s |
+| Uncached 2 | [44501080150](https://github.com/danielelisi/vision-pipeline/actions/runs/44501080150) | 126 s | 157 s | disabled | 112.240 s |
+| Warm 2 | [44501164053](https://github.com/danielelisi/vision-pipeline/actions/runs/44501164053) | 46 s | 63 s | 80/80 | 39.677 s |
+
+The restored snapshot was about 47 MB. Cache identification/restore took
+2–4 seconds in the warm runs, and the cold snapshot save took 3 seconds.
+The warm runs' reported SwiftCompile task totals were 0.224 and 0.101 seconds,
+versus 16.358 and 28.245 seconds for the uncached controls. This confirms
+compiler work is reused on fresh runners.
+
+The observed median entire-job time was 94 seconds warm versus 131.5 seconds
+uncached. **This small sample does not establish a reliable percentage speedup.**
+Asset processing dominates the critical path and varied from about 40 to 141
+seconds across runs; it is not part of Xcode's compilation cache. Task totals
+can overlap, so they must not be added to estimate elapsed build time. Reducing
+asset-catalog work is the next target for an end-to-end improvement.
+
+The workflow also publishes the compiler metrics and timing summary directly in
+the GitHub job summary, with the full raw log retained for seven days.
