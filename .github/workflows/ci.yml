@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
     tags: ["v*"]          # push a v0.1.0-style tag to ship to TestFlight
+    # Path filters apply to branches, so documentation-only tags still ship.
+    paths-ignore: ["**/*.md"]
+  # Keep PR checks running even for documentation-only changes.
   pull_request:
   workflow_dispatch:
 
@@ -13,6 +16,8 @@ concurrency:
 
 env:
   APP: VisionPipeline
+  HOMEBREW_NO_AUTO_UPDATE: "1"
+  HOMEBREW_NO_INSTALL_CLEANUP: "1"
 
 jobs:
   build:
@@ -27,10 +32,7 @@ jobs:
           xcode-version: latest-stable
 
       - name: Tools and visionOS platform
-        run: |
-          brew install xcodegen xcbeautify
-          xcodebuild -version
-          xcodebuild -showsdks | grep -q xros || xcodebuild -downloadPlatform visionOS
+        run: bash ci/setup-tools.sh xrsimulator
 
       - name: Generate Xcode project
         run: xcodegen generate
@@ -43,6 +45,9 @@ jobs:
             -scheme "$APP" \
             -destination 'generic/platform=visionOS Simulator' \
             -derivedDataPath build \
+            -showBuildTimingSummary \
+            ARCHS=arm64 \
+            ONLY_ACTIVE_ARCH=YES \
             CODE_SIGNING_ALLOWED=NO \
             | xcbeautify --renderer github-actions
 
@@ -72,10 +77,10 @@ jobs:
           xcode-version: latest-stable
 
       - name: Tools and visionOS platform
-        run: |
-          brew install xcodegen xcbeautify
-          xcodebuild -showsdks | grep -q xros || xcodebuild -downloadPlatform visionOS
-          xcodegen generate
+        run: bash ci/setup-tools.sh xros
+
+      - name: Generate Xcode project
+        run: xcodegen generate
 
       - name: Write App Store Connect API key
         run: |
@@ -90,6 +95,7 @@ jobs:
             -scheme "$APP" \
             -destination 'generic/platform=visionOS' \
             -archivePath build/App.xcarchive \
+            -showBuildTimingSummary \
             -allowProvisioningUpdates \
             -authenticationKeyPath ~/.appstoreconnect/AuthKey.p8 \
             -authenticationKeyID "$ASC_KEY_ID" \

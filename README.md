@@ -7,8 +7,12 @@ applying it to real projects.
 
 | Trigger | Job | What happens |
 |---|---|---|
-| push / PR / manual | **Build** | `macos-15` runner → latest Xcode → `xcodegen generate` → build for the visionOS simulator (unsigned) → `.app` uploaded as an artifact |
+| push / PR / manual | **Build** | `macos-15` runner → latest stable Xcode → `xcodegen generate` → arm64 build for the visionOS simulator (unsigned) → `.app` uploaded as an artifact |
 | tag `v*` | **Ship to TestFlight** | archive with cloud-managed signing via an App Store Connect API key → upload to TestFlight |
+
+Documentation-only pushes to `main` skip CI; PR checks and version tags still run.
+TestFlight waits for a successful simulator build. Simulator artifacts require
+Apple silicon. See [CI review](ci/README.md) for baseline timings and follow-up options.
 
 ## Local
 
