@@ -74,12 +74,14 @@ final class TrailModel {
 
     static let immersiveSpaceID = "trailTable"
     static let exaggerationRange: ClosedRange<Float> = 0.5...3
+    /// Starting exaggeration. The terrain textures (slope colouring) are baked at this value.
+    static let defaultExaggeration: Float = 2
 
     let terrain = Terrain()
     var waypoints: [Waypoint] = []
     var mode: Mode = .plan
     /// Vertical exaggeration of the terrain.
-    var exaggeration: Float = 1.5
+    var exaggeration: Float = TrailModel.defaultExaggeration
     /// Rotation of the map on its plinth, in radians.
     var heading: Float = 0
     /// Bumped to send the table back to its starting place.
@@ -111,7 +113,7 @@ final class TrailModel {
 
     func resetTable() {
         heading = 0
-        exaggeration = 1.5
+        exaggeration = TrailModel.defaultExaggeration
         resetToken += 1
     }
 

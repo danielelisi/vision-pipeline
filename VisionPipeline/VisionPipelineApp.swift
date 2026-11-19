@@ -8,6 +8,7 @@ struct VisionPipelineApp: App {
 
     init() {
         NetworkAnimation.register()
+        TrailEffects.register()
     }
 
     var body: some Scene {
