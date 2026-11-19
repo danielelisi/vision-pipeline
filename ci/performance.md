@@ -34,7 +34,22 @@ Sources: [latest main run](https://github.com/danielelisi/vision-pipeline/action
 - Add `-showBuildTimingSummary` to build and archive so subsequent optimization
   can use compiler task timings. See [Apple's build timing guidance](https://developer.apple.com/documentation/xcode/improving-the-speed-of-incremental-builds).
 
-Savings must be measured on the branch workflow; no fixed percentage is assumed.
+## Validation result
+
+[Branch run 44496519009](https://github.com/danielelisi/vision-pipeline/actions/runs/44496519009)
+passed on the same runner image and Xcode version. Setup plus generation took
+11 seconds, the build took 52 seconds, artifact upload took 2 seconds, and the
+whole workflow took 83 seconds (77 seconds within the build job). Logs confirm
+ARM64 compilation with no x86_64 compilation or universal linking.
+
+This is within the baseline range, so **a wall-clock speedup is not established**.
+The changes remove redundant work, but a larger paired sample is needed to
+separate their effect from hosted-runner variance. Homebrew still downloads
+XcodeGen; skipping the preinstalled formatter did not measurably shorten setup
+in this sample. Actionlint, shell syntax, and mocked setup branches also passed.
+The signed archive/export path was not exercised; branch manual dispatch runs
+only the simulator job.
+
 Compare build and setup steps separately from total time and repeat if runner
 variance is larger than the difference.
 
