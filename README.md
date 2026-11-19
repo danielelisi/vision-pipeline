@@ -15,6 +15,13 @@ disposable runner. Both build jobs print Xcode timing summaries. The simulator
 artifact targets Apple silicon; it does not include an Intel simulator binary.
 The TestFlight job still waits for the simulator build to pass.
 
+CI persists simulator Debug compilation results with `actions/cache`, keyed by
+SDK, toolchain, OS build, architecture, and project settings. Each commit saves
+a snapshot and can restore compatible results from earlier commits. Only
+compiler results are cached. Manual runs expose a `use_cache` switch for
+benchmarks; diagnostics are in the `simulator-build-log` artifact. TestFlight
+archives are not cached because GitHub isolates caches between different tags.
+
 See [the CI performance review](ci/performance.md) for baseline measurements and
 further options.
 

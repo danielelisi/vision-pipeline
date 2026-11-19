@@ -62,10 +62,8 @@ variance is larger than the difference.
   on both succeeding. That requires transferring a signed archive between jobs
   and measuring the transfer overhead. Simply dropping `needs: build` would
   remove the existing release gate.
-- **Caching:** there are no Swift package dependencies. DerivedData caching may
-  help as the app grows, but download/upload overhead and Xcode's handling of
-  source timestamps need measurement against a build that currently takes less
-  than 70 seconds. Do not cache SDKs or simulator runtimes; they are large and
+- **Caching:** simulator compilation caching is implemented below. There are no
+  Swift package dependencies to cache. SDKs and simulator runtimes are large and
   already installed in the measured runs.
 - **Artifacts:** uploading the roughly 4 MB simulator artifact took only two
   seconds. Retain it on every build; tuning compression has little headroom.
@@ -76,3 +74,77 @@ variance is larger than the difference.
   logs. Moving to an ARM runner is therefore not an additional optimization.
   `latest-stable` adds little setup time; pin Xcode for reproducibility if
   desired, rather than expecting a speed improvement from that alone.
+
+## Compilation caching
+
+Simulator CI now enables Xcode 26's content-addressed compilation cache using
+`COMPILATION_CACHE_ENABLE_CACHING=YES` and an explicit
+`COMPILATION_CACHE_CAS_PATH`. `actions/cache@v5` persists only that directory.
+Build products, DerivedData's incremental database, SDKs, and simulator runtimes
+are not restored. Each runner still generates the project and performs a build;
+Xcode validates compiler inputs and replays matching cached compilation results.
+
+The compatibility prefix includes the Xcode version/build, SDK build, macOS build,
+runner architecture, checkout location, SDK, configuration, project specification,
+and cache action definition. The commit SHA identifies each immutable snapshot;
+a prefix restore allows reuse across source commits. GitHub retains its normal
+branch/PR cache isolation and eviction policy. A missing or evicted snapshot
+simply requires compiling again. Bump `xcode-cas-v1` in the local action to
+invalidate all snapshots if needed.
+
+Device archives are intentionally excluded: they run on unique release tags,
+and GitHub does not allow one tag to restore another tag's snapshot. The default
+branch does not populate a device Release cache. Adding such a cache only to the
+tag job would add storage/upload work without cross-release reuse.
+
+### Reproducing measurements
+
+Dispatch CI on the same branch with `use_cache=false` for an uncached baseline.
+Then dispatch with `use_cache=true`; the first compatible run populates the cache,
+and subsequent runs restore it. Keep app source, Xcode, SDK, and runner image the
+same. Compare the Build step and the full job (including cache restore/save),
+and inspect compiler cache-hit remarks in the `simulator-build-log` artifact.
+The job summary reports an exact snapshot match; a prefix snapshot can still
+produce compiler hits even when that field is false.
+
+```sh
+gh workflow run ci.yml --ref ci/compilation-cache -f use_cache=false
+# Wait for each run to complete before dispatching the next (concurrency cancels overlaps).
+gh workflow run ci.yml --ref ci/compilation-cache -f use_cache=true
+```
+
+References: [Xcode 26 compilation caching](https://developer.apple.com/documentation/Xcode-Release-Notes/xcode-26-release-notes),
+[cache action](https://github.com/actions/cache), and
+[GitHub cache scope restrictions](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#restrictions-for-accessing-a-cache).
+
+### Measured results (2026-11-19)
+
+All five runs below used commit `f6055a3`, the same app source, Xcode 26.3,
+and the `macos-15-arm64` image. Uncached controls explicitly set
+`COMPILATION_CACHE_ENABLE_CACHING=NO` and skip cache transfer. Runs were
+interleaved; the controls used a temporary ref at the same commit so GitHub's
+concurrency rule would not cancel the warm runs.
+
+| Mode | Run | Build step | Entire job | Compiler replay hits | Asset compilation task |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Cold/populate | [44500229760](https://github.com/danielelisi/vision-pipeline/actions/runs/44500229760) | 153 s | 177 s | 0/80 | 140.843 s |
+| Uncached 1 | [44500708510](https://github.com/danielelisi/vision-pipeline/actions/runs/44500708510) | 82 s | 106 s | disabled | 69.763 s |
+| Warm 1 | [44500736053](https://github.com/danielelisi/vision-pipeline/actions/runs/44500736053) | 97 s | 125 s | 80/80 | 81.183 s |
+| Uncached 2 | [44501080150](https://github.com/danielelisi/vision-pipeline/actions/runs/44501080150) | 126 s | 157 s | disabled | 112.240 s |
+| Warm 2 | [44501164053](https://github.com/danielelisi/vision-pipeline/actions/runs/44501164053) | 46 s | 63 s | 80/80 | 39.677 s |
+
+The restored snapshot was about 47 MB. Cache identification/restore took
+2–4 seconds in the warm runs, and the cold snapshot save took 3 seconds.
+The warm runs' reported SwiftCompile task totals were 0.224 and 0.101 seconds,
+versus 16.358 and 28.245 seconds for the uncached controls. This confirms
+compiler work is reused on fresh runners.
+
+The observed median entire-job time was 94 seconds warm versus 131.5 seconds
+uncached. **This small sample does not establish a reliable percentage speedup.**
+Asset processing dominates the critical path and varied from about 40 to 141
+seconds across runs; it is not part of Xcode's compilation cache. Task totals
+can overlap, so they must not be added to estimate elapsed build time. Reducing
+asset-catalog work is the next target for an end-to-end improvement.
+
+The workflow also publishes the compiler metrics and timing summary directly in
+the GitHub job summary, with the full raw log retained for seven days.

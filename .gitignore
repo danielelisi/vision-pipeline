@@ -4,3 +4,6 @@ DerivedData/
 VisionPipeline/Info.plist
 .DS_Store
 .worktrees/
+
+# Xcode content-addressed compilation cache (CI only).
+.ci-cache/
