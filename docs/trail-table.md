@@ -3,13 +3,13 @@
 A second experience for this app: a 3D mountain on a round table, where you plan a hiking
 route with your hands. Sources are in `VisionPipeline/Trail/`.
 
-**Status: not wired into the app and never compiled.** Nothing references these types yet.
+## How it is wired
 
-## To wire it up
-
-- Create one `TrailModel` in `VisionPipelineApp` and put it in the environment.
-- Add `ImmersiveSpace(id: TrailModel.immersiveSpaceID) { TableView() }` with a mixed immersion style.
-- Show `TrailPanel` somewhere reachable (its own window, or a section of `ContentView`).
+- The app opens on a chooser (`Launcher.swift`): **Cluster Network** or **Trail Table**.
+  Going back to the chooser closes the other experience's window or space.
+- `VisionPipelineApp` owns one `TrailModel` and puts it in the environment.
+- `ImmersiveSpace(id: TrailModel.immersiveSpaceID) { TableView() }` uses mixed immersion.
+- Picking Trail Table shows `TrailPanel` in the main window; its toggle opens the space.
 
 ## Gestures
 
